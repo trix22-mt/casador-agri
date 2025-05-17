@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Casador Agri Corporation</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+        #contact {
+            height: 100vh;
+            min-height: 100vh;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin: 0 !important;
+            padding: 0 !important;
+            scroll-margin-top: 100px;
+            overflow: hidden;
+        }
+        #contact h2 {
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">Casador Agri</div>
+        <div class="navbar-links">
+            <a href="#home">Home</a>
+            <a href="#about">About Us</a>
+            <a href="#services">Services</a>
+            <a href="#contact">Contact Us</a>
+        </div>
+    </nav>
+    <section id="home">
+        <div class="hero-content">
+            <h1>Growing Excellence in Agriculture</h1>
+            <p>Innovative solutions for sustainable farming and agricultural development</p>
+            <a href="/register" class="cta-button">Get Started</a>
+        </div>
+    </section>
+
+    <section id="about">
+        <div class="container">
+            <h2>About Us</h2>
+            <p>Casador Agri is dedicated to revolutionizing agricultural practices through innovation, sustainability, and excellence. We provide comprehensive solutions for modern farming needs.</p>
+        </div>
+    </section>
+
+    <section id="services">
+        <div class="container">
+            <h2>Our Services</h2>
+            <div class="services-grid">
+                <div class="service-card">
+                    <h3>Farm Management</h3>
+                    <p>Comprehensive farm management solutions for optimal productivity</p>
+                </div>
+                <div class="service-card">
+                    <h3>Agricultural Consulting</h3>
+                    <p>Expert advice on crop management and agricultural practices</p>
+                </div>
+                <div class="service-card">
+                    <h3>Technology Solutions</h3>
+                    <p>Modern agricultural technology integration and support</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="contact">
+        <h2>Contact Us</h2>
+        <div class="contact-info-permanent">
+            <div><strong>Email:</strong> casadoragricenter@gmail.com</div>
+            <div><strong>Phone:</strong> 09427410379</div>
+            <div><strong>Mobile:</strong> 0969 373 4898 / 0926 694 9638</div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 Casador Agri. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        const hamburger = document.getElementById('hamburger-menu');
+        const navLinks = document.getElementById('nav-links');
+        hamburger.addEventListener('click', () => {
+            navLinks.classList.toggle('nav-active');
+        });
+    </script>
+</body>
+</html> 

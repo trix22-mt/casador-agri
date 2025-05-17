@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory and Sales Records - Casador Agri</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .table-container {
+            margin: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+        }
+        tr:hover {
+            background-color: #f9f9f9;
+        }
+        .section-title {
+            margin-top: 40px;
+            color: #333;
+            font-size: 1.5em;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">Casador Agri</div>
+        <div class="navbar-links">
+            <a href="/landing">Home</a>
+            <a href="/charts">Charts</a>
+            <a href="/inventory_sales_records">Records</a>
+            <a href="/login">Logout</a>
+        </div>
+    </nav>
+    
+    <div class="centered-wrapper">
+        <div class="container">
+            <h2 style="text-align:center; margin-top: 100px;">Inventory and Sales Records</h2>
+            
+            <!-- Filter Form for Inventory -->
+            <form method="get" action="" style="margin-bottom: 30px; display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+                <div>
+                    <label for="inv_product_name">Product Name:</label>
+                    <select name="inv_product_name" id="inv_product_name">
+                        <option value="">All</option>
+                        {% for name in product_names %}
+                        <option value="{{ name }}" {% if inv_selected_product == name %}selected{% endif %}>{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="inventory_last_updated">Inventory Last Updated:</label>
+                    <input type="date" name="inventory_last_updated" id="inventory_last_updated" value="{{ inventory_last_updated or '' }}">
+                </div>
+                <div>
+                    <button type="submit" class="cta-button">Filter</button>
+                    <a href="/inventory_sales_records" class="cta-button" style="background:#ccc; color:#222; margin-left:5px;">Reset</a>
+                </div>
+            </form>
+            <!-- End Filter Form for Inventory -->
+            
+            <div class="table-container">
+                <h3 class="section-title">Inventory Records</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Product Name</th>
+                            <th>Quantity</th>
+                            <th>Stock Status</th>
+                            <th>Last Updated</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in inventory_records %}
+                        <tr>
+                            <td>{{ record.product_name }}</td>
+                            <td>{{ record.quantity }}</td>
+                            <td>{{ record.stock_status }}</td>
+                            <td>{{ record.updated_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Filter Form for Sales (Product Name Only) -->
+            <form method="get" action="" style="margin-bottom: 20px; display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+                <div>
+                    <label for="sales_product_name">Product Name:</label>
+                    <select name="sales_product_name" id="sales_product_name">
+                        <option value="">All</option>
+                        {% for name in product_names %}
+                        <option value="{{ name }}" {% if sales_selected_product == name %}selected{% endif %}>{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <button type="submit" class="cta-button">Filter</button>
+                </div>
+            </form>
+            <!-- End Filter Form for Sales -->
+
+            <div class="table-container">
+                <h3 class="section-title">Sales Records</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Product Name</th>
+                            <th>Quantity Sold</th>
+                            <th>Sale Date</th>
+                            <th>Total Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in sales_records %}
+                        <tr>
+                            <td>{{ record.product_name }}</td>
+                            <td>{{ record.quantity_sold }}</td>
+                            <td>{{ record.sale_date.strftime('%Y-%m-%d') }}</td>
+                            <td>₱{{ "%.2f"|format(record.total_amount) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 

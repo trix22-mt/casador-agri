@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Casador Agri</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="centered-wrapper">
+        <div class="container">
+            <h2 style="text-align:center;">Register</h2>
+            <form method="post" action="/register" class="contact-form">
+                <input type="text" name="username" placeholder="Username" required>
+                <input type="email" name="email" placeholder="Email" required>
+                <input type="password" name="password" placeholder="Password" required>
+                <button type="submit" class="cta-button">Register</button>
+            </form>
+            <p style="margin-top: 1rem; text-align:center;">Already have an account? <a href="/login">Log in here</a></p>
+        </div>
+    </div>
+</body>
+</html> 

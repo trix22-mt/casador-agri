@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Descriptive Analytics - Casador Agri</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">Casador Agri</div>
+        <div class="navbar-links">
+            <a href="/landing">Home</a>
+            <a href="/charts">Charts</a>
+            <a href="/inventory_sales_records">Records</a>
+            <a href="/login">Logout</a>
+        </div>
+    </nav>
+    <div class="centered-wrapper">
+        <div class="container">
+            <!-- Predictive Analytics Metrics (TOP, LOWERED) -->
+            <div class="metrics-container" style="margin: 4.5rem auto 2.5rem auto; text-align: center; background: #f5faff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); padding: 1.5rem 0; max-width: 700px;">
+                <h2 style="margin-bottom: 1rem; color: #0074d9; letter-spacing: 1px;">Predictive Analytics Metrics</h2>
+                <div style="display: flex; justify-content: center; gap: 2.5rem; font-size: 1.25rem;">
+                    <div><strong>Accuracy:</strong> <span style="color:#0074d9">{{ '%.2f' % (accuracy * 100) }}%</span></div>
+                    <div><strong>Precision:</strong> <span style="color:#2ecc40">{{ '%.2f' % (precision * 100) }}%</span></div>
+                    <div><strong>Recall:</strong> <span style="color:#ff851b">{{ '%.2f' % (recall * 100) }}%</span></div>
+                    <div><strong>F1 Score:</strong> <span style="color:#b10dc9">{{ '%.2f' % (f1 * 100) }}%</span></div>
+                </div>
+            </div>
+            <!-- End Predictive Analytics Metrics -->
+            <h2 style="text-align:center; margin-top: 100px;">Descriptive Analytics</h2>
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3>Average Monthly Sales Volume</h3>
+                    <canvas id="monthlySalesChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Price Trends Over Time</h3>
+                    <canvas id="priceTrendsChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Forecast vs Actual Sales</h3>
+                    <canvas id="forecastVsActualChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Sales by Region or Market</h3>
+                    <canvas id="salesByRegionChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Sales by Volume by Product Type or Variety</h3>
+                    <canvas id="salesByProductChart"></canvas>
+                </div>
+            </div>
+            <h2 style="text-align:center; margin-top: 2.5rem;">Forecasting Analytics</h2>
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3>Future Sales Volume</h3>
+                    <canvas id="futureSalesChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Revenue from Sales</h3>
+                    <canvas id="revenueFromSalesChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Demand by Region</h3>
+                    <canvas id="demandByRegionChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Optimal Stock / Reorder Levels</h3>
+                    <canvas id="optimalStockChart"></canvas>
+                </div>
+            </div>
+            <h2 style="text-align:center; margin-top: 2.5rem;">Trend Analysis</h2>
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3>Seasonal Sales Trend</h3>
+                    <canvas id="seasonalSalesTrendChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Price Movement Trends</h3>
+                    <canvas id="priceMovementTrendChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Inventory Movement Trend</h3>
+                    <canvas id="inventoryMovementTrendChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Customer Buying Behavior Trend</h3>
+                    <canvas id="customerBuyingBehaviorTrendChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Data fetched from the database
+        const monthlySalesData = {
+            labels: JSON.parse('{{ monthly_sales|map(attribute="month")|list|tojson }}'),
+            datasets: [{
+                label: 'Average Monthly Sales Volume',
+                data: JSON.parse('{{ monthly_sales|map(attribute="sales")|list|tojson }}'),
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1
+            }]
+        };
+        const priceTrendsData = {
+            labels: JSON.parse('{{ price_trends|map(attribute="month")|list|tojson }}'),
+            datasets: [{
+                label: 'Price Trends Over Time',
+                data: JSON.parse('{{ price_trends|map(attribute="price")|list|tojson }}'),
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                borderColor: 'rgba(255, 99, 132, 1)',
+                borderWidth: 1
+            }]
+        };
+        const forecastVsActualData = {
+            labels: JSON.parse('{{ forecast_vs_actual|map(attribute="month")|list|tojson }}'),
+            datasets: [
+                {
+                    label: 'Forecast',
+                    data: JSON.parse('{{ forecast_vs_actual|map(attribute="forecast")|list|tojson }}'),
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Actual',
+                    data: JSON.parse('{{ forecast_vs_actual|map(attribute="actual")|list|tojson }}'),
+                    backgroundColor: 'rgba(255, 206, 86, 0.2)',
+                    borderColor: 'rgba(255, 206, 86, 1)',
+                    borderWidth: 1
+                }
+            ]
+        };
+        const salesByRegionData = {
+            labels: JSON.parse('{{ sales_by_region|map(attribute="location_id")|list|tojson }}'),
+            datasets: [{
+                label: 'Sales by Region',
+                data: JSON.parse('{{ sales_by_region|map(attribute="sales")|list|tojson }}'),
+                backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                borderColor: 'rgba(255, 159, 64, 1)',
+                borderWidth: 1
+            }]
+        };
+        const salesByProductData = {
+            labels: JSON.parse('{{ sales_by_product|map(attribute="product_type")|list|tojson }}'),
+            datasets: [{
+                label: 'Sales by Product Type/Variety',
+                data: JSON.parse('{{ sales_by_product|map(attribute="volume")|list|tojson }}'),
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        };
+        const futureSalesData = {
+            labels: JSON.parse('{{ future_sales|map(attribute="month")|list|tojson }}'),
+            datasets: [{
+                label: 'Future Sales Volume',
+                data: JSON.parse('{{ future_sales|map(attribute="future_sales")|list|tojson }}'),
+                backgroundColor: 'rgba(0, 123, 255, 0.2)',
+                borderColor: 'rgba(0, 123, 255, 1)',
+                borderWidth: 1
+            }]
+        };
+        const revenueFromSalesData = {
+            labels: JSON.parse('{{ revenue_from_sales|map(attribute="month")|list|tojson }}'),
+            datasets: [{
+                label: 'Revenue from Sales',
+                data: JSON.parse('{{ revenue_from_sales|map(attribute="revenue")|list|tojson }}'),
+                backgroundColor: 'rgba(40, 167, 69, 0.2)',
+                borderColor: 'rgba(40, 167, 69, 1)',
+                borderWidth: 1
+            }]
+        };
+        const demandByRegionData = {
+            labels: JSON.parse('{{ demand_by_region|map(attribute="location_id")|list|tojson }}'),
+            datasets: [{
+                label: 'Demand by Region',
+                data: JSON.parse('{{ demand_by_region|map(attribute="demand")|list|tojson }}'),
+                backgroundColor: 'rgba(255, 193, 7, 0.2)',
+                borderColor: 'rgba(255, 193, 7, 1)',
+                borderWidth: 1
+            }]
+        };
+        const optimalStockData = {
+            labels: JSON.parse('{{ optimal_stock|map(attribute="product_name")|list|tojson }}'),
+            datasets: [{
+                label: 'Optimal Stock / Reorder Levels',
+                data: JSON.parse('{{ optimal_stock|map(attribute="stock_level")|list|tojson }}'),
+                backgroundColor: 'rgba(220, 53, 69, 0.2)',
+                borderColor: 'rgba(220, 53, 69, 1)',
+                borderWidth: 1
+            }]
+        };
+        const seasonalSalesTrendData = {
+            labels: JSON.parse('{{ seasonal_sales_trend|map(attribute="month")|list|tojson }}'),
+            datasets: [{
+                label: 'Seasonal Sales Trend',
+                data: JSON.parse('{{ seasonal_sales_trend|map(attribute="sales")|list|tojson }}'),
+                backgroundColor: 'rgba(0, 123, 255, 0.2)',
+                borderColor: 'rgba(0, 123, 255, 1)',
+                borderWidth: 1
+            }]
+        };
+        const priceMovementTrendData = {
+            labels: JSON.parse('{{ price_movement_trend|map(attribute="month")|list|tojson }}'),
+            datasets: [{
+                label: 'Price Movement Trends',
+                data: JSON.parse('{{ price_movement_trend|map(attribute="avg_price")|list|tojson }}'),
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                borderColor: 'rgba(255, 99, 132, 1)',
+                borderWidth: 1
+            }]
+        };
+        const inventoryMovementTrendData = {
+            labels: JSON.parse('{{ inventory_movement_trend|map(attribute="month")|list|tojson }}'),
+            datasets: [{
+                label: 'Inventory Movement Trend',
+                data: JSON.parse('{{ inventory_movement_trend|map(attribute="total_inventory")|list|tojson }}'),
+                backgroundColor: 'rgba(40, 167, 69, 0.2)',
+                borderColor: 'rgba(40, 167, 69, 1)',
+                borderWidth: 1
+            }]
+        };
+        const customerBuyingBehaviorTrendData = {
+            labels: JSON.parse('{{ customer_buying_behavior_trend|map(attribute="month")|list|tojson }}'),
+            datasets: [{
+                label: 'Customer Buying Behavior Trend',
+                data: JSON.parse('{{ customer_buying_behavior_trend|map(attribute="total_bought")|list|tojson }}'),
+                backgroundColor: 'rgba(255, 193, 7, 0.2)',
+                borderColor: 'rgba(255, 193, 7, 1)',
+                borderWidth: 1
+            }]
+        };
+
+        // Render charts
+        new Chart(document.getElementById('monthlySalesChart'), {
+            type: 'bar',
+            data: monthlySalesData,
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+        new Chart(document.getElementById('priceTrendsChart'), {
+            type: 'line',
+            data: priceTrendsData,
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+        new Chart(document.getElementById('forecastVsActualChart'), {
+            type: 'bar',
+            data: forecastVsActualData,
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+        new Chart(document.getElementById('salesByRegionChart'), {
+            type: 'bar',
+            data: salesByRegionData,
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+        new Chart(document.getElementById('salesByProductChart'), {
+            type: 'bar',
+            data: salesByProductData,
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+        new Chart(document.getElementById('futureSalesChart'), {
+            type: 'bar',
+            data: futureSalesData,
+            options: { scales: { y: { beginAtZero: true } } }
+        });
+        new Chart(document.getElementById('revenueFromSalesChart'), {
+            type: 'line',
+            data: revenueFromSalesData,
+            options: { scales: { y: { beginAtZero: true } } }
+        });
+        new Chart(document.getElementById('demandByRegionChart'), {
+            type: 'bar',
+            data: demandByRegionData,
+            options: { scales: { y: { beginAtZero: true } } }
+        });
+        new Chart(document.getElementById('optimalStockChart'), {
+            type: 'bar',
+            data: optimalStockData,
+            options: { scales: { y: { beginAtZero: true } } }
+        });
+        new Chart(document.getElementById('seasonalSalesTrendChart'), {
+            type: 'line',
+            data: seasonalSalesTrendData,
+            options: { scales: { y: { beginAtZero: true } } }
+        });
+        new Chart(document.getElementById('priceMovementTrendChart'), {
+            type: 'line',
+            data: priceMovementTrendData,
+            options: { scales: { y: { beginAtZero: true } } }
+        });
+        new Chart(document.getElementById('inventoryMovementTrendChart'), {
+            type: 'line',
+            data: inventoryMovementTrendData,
+            options: { scales: { y: { beginAtZero: true } } }
+        });
+        new Chart(document.getElementById('customerBuyingBehaviorTrendChart'), {
+            type: 'line',
+            data: customerBuyingBehaviorTrendData,
+            options: { scales: { y: { beginAtZero: true } } }
+        });
+    </script>
+</body>
+</html> 
