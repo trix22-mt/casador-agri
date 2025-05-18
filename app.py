@@ -14,6 +14,8 @@ from statsmodels.tsa.statespace.sarimax import SARIMAX
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import os
 from dotenv import load_dotenv
+import psycopg2
+import psycopg2.extras
 
 load_dotenv()
 
@@ -47,16 +49,19 @@ def load_user(user_id):
 
 # Database connection configuration
 db_config = {
-    'host': os.getenv('DB_HOST', 'localhost'),
-    'user': os.getenv('DB_USER', 'root'),
-    'password': os.getenv('DB_PASSWORD', ''),
-    'db': os.getenv('DB_NAME', 'att_db'),
-    'charset': 'utf8mb4',
-    'cursorclass': pymysql.cursors.DictCursor
+    'host': os.getenv('DB_HOST'),
+    'user': os.getenv('DB_USER'),
+    'password': os.getenv('DB_PASSWORD'),
+    'dbname': os.getenv('DB_NAME'),
+    'port': os.getenv('DB_PORT', 5432)
 }
 
 def get_db_connection():
-    return pymysql.connect(**db_config)
+    return psycopg2.connect(**db_config)
+
+# Use RealDictCursor for dictionary-like results
+def get_dict_cursor(conn):
+    return conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
 def create_tables():
     conn = get_db_connection()
@@ -64,129 +69,118 @@ def create_tables():
         with conn.cursor() as cursor:
             # Location table (must be created before Customer)
             cursor.execute('''CREATE TABLE IF NOT EXISTS Location (
-                location_id INT AUTO_INCREMENT PRIMARY KEY,
-                delivery_id INT,
-                customer_id INT,
+                location_id SERIAL PRIMARY KEY,
+                delivery_id INTEGER,
+                customer_id INTEGER,
                 latitude DECIMAL(10,6),
                 longitude DECIMAL(10,6),
-                time_stamp DATETIME
+                time_stamp TIMESTAMP
             )''')
             # Customer table
             cursor.execute('''CREATE TABLE IF NOT EXISTS Customer (
-                customer_id INT AUTO_INCREMENT PRIMARY KEY,
+                customer_id SERIAL PRIMARY KEY,
                 name VARCHAR(100),
                 contact_number VARCHAR(20),
                 email VARCHAR(100),
-                location_id INT,
-                FOREIGN KEY (location_id) REFERENCES Location(location_id)
+                location_id INTEGER REFERENCES Location(location_id)
             )''')
             # User table
-            cursor.execute('''CREATE TABLE IF NOT EXISTS User (
-                user_id INT AUTO_INCREMENT PRIMARY KEY,
+            cursor.execute('''CREATE TABLE IF NOT EXISTS "User" (
+                user_id SERIAL PRIMARY KEY,
                 full_name VARCHAR(50),
-                username VARCHAR(10),
-                password VARCHAR(50),
-                role ENUM('admin','user'),
+                username VARCHAR(50),
+                password VARCHAR(100),
+                role VARCHAR(10),
                 email VARCHAR(50)
             )''')
             # Product table
             cursor.execute('''CREATE TABLE IF NOT EXISTS Product (
-                product_id INT AUTO_INCREMENT PRIMARY KEY,
+                product_id SERIAL PRIMARY KEY,
                 product_name VARCHAR(50),
                 price DECIMAL(10,2),
                 category VARCHAR(50)
             )''')
             # Sales table
             cursor.execute('''CREATE TABLE IF NOT EXISTS Sales (
-                sales_id INT AUTO_INCREMENT PRIMARY KEY,
-                product_id INT,
-                quantity_sold INT,
+                sales_id SERIAL PRIMARY KEY,
+                product_id INTEGER REFERENCES Product(product_id),
+                quantity_sold INTEGER,
                 sale_date DATE,
                 total_amount DECIMAL(10,2),
-                FOREIGN KEY (product_id) REFERENCES Product(product_id)
+                order_id INTEGER
             )''')
             # Orders table
             cursor.execute('''CREATE TABLE IF NOT EXISTS Orders (
-                order_id INT AUTO_INCREMENT PRIMARY KEY,
-                customer_id INT,
+                order_id SERIAL PRIMARY KEY,
+                customer_id INTEGER REFERENCES Customer(customer_id),
                 order_date DATE,
-                payment_status ENUM('paid','unpaid'),
-                status ENUM('pending','completed','cancelled'),
+                payment_status VARCHAR(10),
+                status VARCHAR(20),
                 amount_paid DECIMAL(10,2),
-                payment_date DATE,
-                FOREIGN KEY (customer_id) REFERENCES Customer(customer_id)
+                payment_date DATE
             )''')
             # Order Details table
             cursor.execute('''CREATE TABLE IF NOT EXISTS Order_Details (
-                order_detail_id INT AUTO_INCREMENT PRIMARY KEY,
-                order_id INT,
-                product_id INT,
-                quantity INT,
-                price DECIMAL(10,2),
-                FOREIGN KEY (order_id) REFERENCES Orders(order_id),
-                FOREIGN KEY (product_id) REFERENCES Product(product_id)
+                order_detail_id SERIAL PRIMARY KEY,
+                order_id INTEGER REFERENCES Orders(order_id),
+                product_id INTEGER REFERENCES Product(product_id),
+                quantity INTEGER,
+                price DECIMAL(10,2)
             )''')
             # Forecast table
             cursor.execute('''CREATE TABLE IF NOT EXISTS Forecast (
-                forecast_id INT AUTO_INCREMENT PRIMARY KEY,
-                product_id INT,
+                forecast_id SERIAL PRIMARY KEY,
+                product_id INTEGER REFERENCES Product(product_id),
                 forecast_date DATE,
                 predicted_quantity DECIMAL(10,2),
-                confidence_level DECIMAL(5,2),
-                FOREIGN KEY (product_id) REFERENCES Product(product_id)
+                confidence_level DECIMAL(5,2)
             )''')
             # Restock table
             cursor.execute('''CREATE TABLE IF NOT EXISTS Restock (
-                restock_id INT AUTO_INCREMENT PRIMARY KEY,
+                restock_id SERIAL PRIMARY KEY,
                 quantity VARCHAR(100),
                 restock_date DATE,
-                product_id INT,
-                FOREIGN KEY (product_id) REFERENCES Product(product_id)
+                product_id INTEGER REFERENCES Product(product_id)
             )''')
             # Inventory table
             cursor.execute('''CREATE TABLE IF NOT EXISTS Inventory (
-                inventory_id INT AUTO_INCREMENT PRIMARY KEY,
-                product_id INT,
-                quantity INT,
+                inventory_id SERIAL PRIMARY KEY,
+                product_id INTEGER REFERENCES Product(product_id),
+                quantity INTEGER,
                 stock_status VARCHAR(50),
-                updated_at DATETIME,
-                FOREIGN KEY (product_id) REFERENCES Product(product_id)
+                updated_at TIMESTAMP
             )''')
             # Delivery table
             cursor.execute('''CREATE TABLE IF NOT EXISTS Delivery (
-                delivery_id INT AUTO_INCREMENT PRIMARY KEY,
-                product_id INT,
-                delivery_personnel_id INT,
+                delivery_id SERIAL PRIMARY KEY,
+                product_id INTEGER REFERENCES Product(product_id),
+                delivery_personnel_id INTEGER,
                 destination_address VARCHAR(255),
-                status ENUM('pending','delivered','cancelled'),
-                delivery_date DATE,
-                FOREIGN KEY (product_id) REFERENCES Product(product_id)
+                status VARCHAR(20),
+                delivery_date DATE
             )''')
             # DeliveryTracking table
             cursor.execute('''CREATE TABLE IF NOT EXISTS DeliveryTracking (
-                tracking_id INT AUTO_INCREMENT PRIMARY KEY,
-                delivery_id INT,
+                tracking_id SERIAL PRIMARY KEY,
+                delivery_id INTEGER REFERENCES Delivery(delivery_id),
                 latitude DECIMAL(10,8),
                 longitude DECIMAL(11,8),
-                timestamp TIMESTAMP,
-                FOREIGN KEY (delivery_id) REFERENCES Delivery(delivery_id)
+                timestamp TIMESTAMP
             )''')
             # DeliveryRoutes table
             cursor.execute('''CREATE TABLE IF NOT EXISTS DeliveryRoutes (
-                route_id INT AUTO_INCREMENT PRIMARY KEY,
-                delivery_id INT,
-                origin_location_id INT,
-                destination_location_id INT,
-                estimated_time TIME,
-                FOREIGN KEY (delivery_id) REFERENCES Delivery(delivery_id)
+                route_id SERIAL PRIMARY KEY,
+                delivery_id INTEGER REFERENCES Delivery(delivery_id),
+                origin_location_id INTEGER,
+                destination_location_id INTEGER,
+                estimated_time TIME
             )''')
             # Activity Log table
             cursor.execute('''CREATE TABLE IF NOT EXISTS Activity_Log (
-                log_id INT AUTO_INCREMENT PRIMARY KEY,
-                user_id INT,
+                log_id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES "User"(user_id),
                 action VARCHAR(100),
-                time_stamp DATETIME,
-                FOREIGN KEY (user_id) REFERENCES User(user_id)
+                time_stamp TIMESTAMP
             )''')
         conn.commit()
     finally:
@@ -214,7 +208,7 @@ def register():
                 
                 # Insert new user
                 cursor.execute("""
-                    INSERT INTO User (username, password, email, role) 
+                    INSERT INTO "User" (username, password, email, role) 
                     VALUES (%s, %s, %s, 'user')
                 """, (username, password, email))
                 conn.commit()
@@ -323,7 +317,7 @@ def charts():
         with conn.cursor() as cursor:
             # Average Monthly Sales Volume
             cursor.execute("""
-                SELECT DATE_FORMAT(sale_date, '%Y-%m') AS month, 
+                SELECT TO_CHAR(sale_date, 'YYYY-MM') AS month, 
                        SUM(quantity_sold) AS sales
                 FROM Sales
                 GROUP BY month
@@ -338,7 +332,7 @@ def charts():
 
             # Price Trends Over Time
             cursor.execute("""
-                SELECT DATE_FORMAT(sale_date, '%Y-%m') AS month, 
+                SELECT TO_CHAR(sale_date, 'YYYY-MM') AS month, 
                        AVG(total_amount/quantity_sold) AS price
                 FROM Sales
                 WHERE quantity_sold > 0
@@ -355,7 +349,7 @@ def charts():
                     COALESCE(SUM(s.quantity_sold), 0) AS actual
                 FROM Forecast f
                 LEFT JOIN Sales s ON f.product_id = s.product_id 
-                    AND DATE_FORMAT(s.sale_date, '%Y-%m') = DATE_FORMAT(f.forecast_date, '%Y-%m')
+                    AND TO_CHAR(s.sale_date, 'YYYY-MM') = TO_CHAR(f.forecast_date, 'YYYY-MM')
                 GROUP BY f.forecast_date, f.product_id
                 ORDER BY f.forecast_date
             """)
@@ -391,7 +385,7 @@ def charts():
                 SELECT forecast_date AS month, 
                        SUM(predicted_quantity) AS future_sales
                 FROM Forecast
-                WHERE forecast_date >= CURDATE()
+                WHERE forecast_date >= CURRENT_DATE
                 GROUP BY forecast_date
                 ORDER BY forecast_date
             """)
@@ -399,7 +393,7 @@ def charts():
 
             # Revenue from Sales
             cursor.execute("""
-                SELECT DATE_FORMAT(sale_date, '%Y-%m') AS month, 
+                SELECT TO_CHAR(sale_date, 'YYYY-MM') AS month, 
                        SUM(total_amount) AS revenue
                 FROM Sales
                 GROUP BY month
@@ -430,7 +424,7 @@ def charts():
 
             # Seasonal Sales Trend
             cursor.execute("""
-                SELECT MONTHNAME(sale_date) AS month, 
+                SELECT TO_CHAR(sale_date, 'Month') AS month, 
                        SUM(quantity_sold) AS sales
                 FROM Sales
                 GROUP BY month
@@ -441,7 +435,7 @@ def charts():
 
             # Price Movement Trends
             cursor.execute("""
-                SELECT DATE_FORMAT(sale_date, '%Y-%m') AS month, 
+                SELECT TO_CHAR(sale_date, 'YYYY-MM') AS month, 
                        AVG(total_amount/quantity_sold) AS avg_price
                 FROM Sales
                 WHERE quantity_sold > 0
@@ -452,7 +446,7 @@ def charts():
 
             # Inventory Movement Trend
             cursor.execute("""
-                SELECT DATE_FORMAT(updated_at, '%Y-%m') AS month, 
+                SELECT TO_CHAR(updated_at, 'YYYY-MM') AS month, 
                        SUM(quantity) AS total_inventory
                 FROM Inventory
                 GROUP BY month
@@ -462,7 +456,7 @@ def charts():
 
             # Customer Buying Behavior Trend
             cursor.execute("""
-                SELECT DATE_FORMAT(sale_date, '%Y-%m') AS month, 
+                SELECT TO_CHAR(sale_date, 'YYYY-MM') AS month, 
                        SUM(quantity_sold) AS total_bought
                 FROM Sales
                 GROUP BY month
@@ -544,9 +538,9 @@ def init_sample_data():
             cursor.execute("ALTER TABLE Location AUTO_INCREMENT = 1")
             
             # Insert sample locations
-            cursor.execute("INSERT INTO Location (latitude, longitude, time_stamp) VALUES (14.5995, 120.9842, NOW())")
+            cursor.execute("INSERT INTO Location (latitude, longitude, time_stamp) VALUES (14.5995, 120.9842, CURRENT_TIMESTAMP)")
             location1_id = cursor.lastrowid
-            cursor.execute("INSERT INTO Location (latitude, longitude, time_stamp) VALUES (10.3157, 123.8854, NOW())")
+            cursor.execute("INSERT INTO Location (latitude, longitude, time_stamp) VALUES (10.3157, 123.8854, CURRENT_TIMESTAMP)")
             location2_id = cursor.lastrowid
             
             # Insert sample customers
@@ -574,10 +568,10 @@ def init_sample_data():
             cursor.execute("INSERT INTO Sales (product_id, quantity_sold, sale_date, total_amount, order_id) VALUES (%s, 60, '2024-03-05', 7200, %s)", (wheat_id, order2_id))
             
             # Insert sample inventory
-            cursor.execute("INSERT INTO Inventory (product_id, quantity, stock_status, updated_at) VALUES (%s, 200, 'in_stock', '2024-01-01')", (corn_id,))
-            cursor.execute("INSERT INTO Inventory (product_id, quantity, stock_status, updated_at) VALUES (%s, 150, 'in_stock', '2024-01-01')", (wheat_id,))
-            cursor.execute("INSERT INTO Inventory (product_id, quantity, stock_status, updated_at) VALUES (%s, 180, 'in_stock', '2024-02-01')", (corn_id,))
-            cursor.execute("INSERT INTO Inventory (product_id, quantity, stock_status, updated_at) VALUES (%s, 130, 'in_stock', '2024-02-01')", (wheat_id,))
+            cursor.execute("INSERT INTO Inventory (product_id, quantity, stock_status, updated_at) VALUES (%s, 200, 'in_stock', CURRENT_TIMESTAMP)", (corn_id,))
+            cursor.execute("INSERT INTO Inventory (product_id, quantity, stock_status, updated_at) VALUES (%s, 150, 'in_stock', CURRENT_TIMESTAMP)", (wheat_id,))
+            cursor.execute("INSERT INTO Inventory (product_id, quantity, stock_status, updated_at) VALUES (%s, 180, 'in_stock', CURRENT_TIMESTAMP)", (corn_id,))
+            cursor.execute("INSERT INTO Inventory (product_id, quantity, stock_status, updated_at) VALUES (%s, 130, 'in_stock', CURRENT_TIMESTAMP)", (wheat_id,))
             
             conn.commit()
             return 'Sample data inserted successfully!'
@@ -596,7 +590,7 @@ def inventory_sales_records():
     sales_product_name = request.args.get('sales_product_name', default=None, type=str)
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        cursor = get_dict_cursor(conn)
         # Build inventory query
         inventory_query = '''
             SELECT i.inventory_id, p.product_name, i.quantity, i.stock_status, i.updated_at
@@ -609,7 +603,7 @@ def inventory_sales_records():
             inventory_filters.append('p.product_name = %s')
             inventory_params.append(inv_product_name)
         if inventory_last_updated:
-            inventory_filters.append('DATE(i.updated_at) = %s')
+            inventory_filters.append("TO_CHAR(i.updated_at, 'YYYY-MM') = %s")
             inventory_params.append(inventory_last_updated)
         if inventory_filters:
             inventory_query += ' WHERE ' + ' AND '.join(inventory_filters)
@@ -656,7 +650,7 @@ def add_old_sample_data():
     from random import randint, choice
     conn = get_db_connection()
     try:
-        cursor = conn.cursor()
+        cursor = get_dict_cursor(conn)
         # Get all products
         cursor.execute('SELECT product_id, product_name FROM Product')
         products = cursor.fetchall()
