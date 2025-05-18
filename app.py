@@ -12,9 +12,13 @@ from decimal import Decimal
 from random import randint, choice
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = 'your-secret-key-here'  # Required for session management
+app.secret_key = os.getenv('SECRET_KEY', 'your-secret-key-here')  # Use environment variable for secret key
 
 # Initialize Flask-Login
 login_manager = LoginManager()
@@ -43,10 +47,10 @@ def load_user(user_id):
 
 # Database connection configuration
 db_config = {
-    'host': 'localhost',
-    'user': 'root',
-    'password': '',  # Make sure this matches your MySQL password
-    'db': 'att_db',  # Make sure this database exists
+    'host': os.getenv('DB_HOST', 'localhost'),
+    'user': os.getenv('DB_USER', 'root'),
+    'password': os.getenv('DB_PASSWORD', ''),
+    'db': os.getenv('DB_NAME', 'att_db'),
     'charset': 'utf8mb4',
     'cursorclass': pymysql.cursors.DictCursor
 }
@@ -227,7 +231,40 @@ def register():
 @app.route('/landing')
 @login_required
 def landing():
-    return render_template('landing.html')
+    product_search = request.args.get('product_search', default=None, type=str)
+    sales_date = request.args.get('sales_date', default=None, type=str)
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Total Sales (with optional date filter)
+            if sales_date:
+                cursor.execute('SELECT SUM(total_amount) AS total_sales FROM Sales WHERE sale_date = %s', (sales_date,))
+            else:
+                cursor.execute('SELECT SUM(total_amount) AS total_sales FROM Sales')
+            total_sales = cursor.fetchone()['total_sales'] or 0
+            # Total Products (with optional search filter)
+            if product_search:
+                cursor.execute('SELECT COUNT(*) AS total_products FROM Product WHERE product_name LIKE %s', (f"%{product_search}%",))
+            else:
+                cursor.execute('SELECT COUNT(*) AS total_products FROM Product')
+            total_products = cursor.fetchone()['total_products'] or 0
+            # Low Stock Items (stock_status = 'Low Stock')
+            cursor.execute("SELECT COUNT(*) AS low_stock_items FROM Inventory WHERE stock_status = 'Low Stock'")
+            low_stock_items = cursor.fetchone()['low_stock_items'] or 0
+            product_search_results = []
+            if product_search:
+                cursor.execute('SELECT product_id, product_name FROM Product WHERE product_name LIKE %s', (f"%{product_search}%",))
+                products = cursor.fetchall()
+                for prod in products:
+                    cursor.execute('SELECT quantity, stock_status FROM Inventory WHERE product_id = %s ORDER BY inventory_id DESC LIMIT 1', (prod['product_id'],))
+                    inv = cursor.fetchone()
+                    if inv:
+                        product_search_results.append({'product_name': prod['product_name'], 'quantity': inv['quantity'], 'stock_status': inv['stock_status']})
+                    else:
+                        product_search_results.append({'product_name': prod['product_name'], 'quantity': 'N/A', 'stock_status': 'No Inventory'})
+    finally:
+        conn.close()
+    return render_template('landing.html', total_sales=total_sales, total_products=total_products, low_stock_items=low_stock_items, product_search_results=product_search_results)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -662,5 +699,5 @@ def add_old_sample_data():
         conn.close()
 
 if __name__ == '__main__':
-    create_tables()
-    app.run(debug=True) 
+    port = int(os.getenv('PORT', 5000))
+    app.run(host='0.0.0.0', port=port) 
