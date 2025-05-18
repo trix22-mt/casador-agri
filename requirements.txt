@@ -41,3 +41,4 @@ Werkzeug==2.0.1
 wheel==0.45.1
 WTForms==3.2.1
 psycopg2-binary
+gunicorn
